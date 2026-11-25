@@ -5,11 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>Sudoku Studio</title>
 
-  <!-- 웹앱 아이콘 및 파비콘 설정 -->
   <link rel="icon" type="image/png" href="./icon.png" />
   <link rel="apple-touch-icon" sizes="180x180" href="./icon.png" />
 
-  <!-- iOS 홈 화면 실행 시 주소창 숨김 및 상태바 설정 -->
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <meta name="apple-mobile-web-app-title" content="Sudoku" />
@@ -35,6 +33,7 @@
       --note-text: #475569;
       --radius: 12px;
       --shadow: 0 4px 20px rgba(15, 23, 42, 0.08);
+      --board-max: 460px;
     }
 
     * {
@@ -60,7 +59,12 @@
       max-width: 480px;
       display: flex;
       flex-direction: column;
+      align-items: center;
       gap: 14px;
+    }
+
+    .app > * {
+      width: 100%;
     }
 
     header {
@@ -131,7 +135,9 @@
       color: var(--error-text);
     }
 
+    /* 보드 크기를 화면 높이와 너비에 맞춰 유동 조절 */
     .board-wrapper {
+      width: min(100%, var(--board-max), 58dvh);
       background: var(--surface);
       padding: 8px;
       border-radius: var(--radius);
@@ -155,7 +161,7 @@
       align-items: center;
       border-right: 1px solid var(--border-thin);
       border-bottom: 1px solid var(--border-thin);
-      font-size: clamp(1.2rem, 5.2vw, 1.65rem);
+      font-size: clamp(1.2rem, 5.2vw, 2.15rem);
       font-weight: 600;
       cursor: pointer;
       transition: background-color 0.08s ease;
@@ -217,7 +223,7 @@
       display: flex;
       justify-content: center;
       align-items: center;
-      font-size: clamp(0.55rem, 2.1vw, 0.72rem);
+      font-size: clamp(0.55rem, 2.1vw, 0.88rem);
       font-weight: 600;
       color: var(--note-text);
       line-height: 1;
@@ -349,6 +355,79 @@
 
     .new-game-btn:hover {
       opacity: 0.92;
+    }
+
+    /* iPad 및 태블릿(600px 이상) 레이아웃 확장 */
+    @media (min-width: 600px) {
+      :root {
+        --board-max: 620px;
+      }
+
+      body {
+        padding: 24px 28px;
+      }
+
+      .app {
+        max-width: 660px;
+        gap: 18px;
+      }
+
+      h1 {
+        font-size: 1.7rem;
+      }
+
+      .difficulty-tabs button {
+        padding: 8px 16px;
+        font-size: 0.95rem;
+      }
+
+      .status-bar {
+        padding: 13px 20px;
+        font-size: 1rem;
+      }
+
+      .board-wrapper {
+        width: min(100%, var(--board-max), 60dvh);
+        padding: 12px;
+        border-radius: 16px;
+      }
+
+      .controls {
+        gap: 12px;
+      }
+
+      .ctrl-btn {
+        padding: 14px 8px;
+        font-size: 0.9rem;
+        border-radius: 14px;
+      }
+
+      .ctrl-btn svg {
+        width: 24px;
+        height: 24px;
+      }
+
+      .numpad {
+        gap: 10px;
+      }
+
+      .num-btn {
+        padding: 14px 0;
+        border-radius: 12px;
+      }
+
+      .num-btn .digit {
+        font-size: 1.65rem;
+      }
+
+      .num-btn .remain {
+        font-size: 0.78rem;
+      }
+
+      .new-game-btn {
+        padding: 15px;
+        font-size: 1.05rem;
+      }
     }
 
     .modal-backdrop {
