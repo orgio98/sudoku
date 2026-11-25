@@ -1,0 +1,1008 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Sudoku Studio</title>
+  <style>
+    :root {
+      --bg: #f4f6f9;
+      --surface: #ffffff;
+      --text: #1e293b;
+      --text-muted: #64748b;
+      --primary: #2563eb;
+      --primary-light: #dbeafe;
+      --primary-soft: #eff6ff;
+      --highlight-peer: #f1f5f9;
+      --highlight-same: #bfdbfe;
+      --border-thin: #cbd5e1;
+      --border-thick: #334155;
+      --user-num: #2563eb;
+      --fixed-num: #0f172a;
+      --error-bg: #fee2e2;
+      --error-text: #dc2626;
+      --note-text: #475569;
+      --radius: 12px;
+      --shadow: 0 4px 20px rgba(15, 23, 42, 0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+
+    body {
+      margin: 0;
+      padding: 16px;
+      font-family: -apple-system, BlinkMacSystemFont, "Pretendard", "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      min-height: 100dvh;
+    }
+
+    .app {
+      width: 100%;
+      max-width: 480px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    /* 헤더 & 난이도 선택 */
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 1.4rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: var(--fixed-num);
+    }
+
+    .difficulty-tabs {
+      display: flex;
+      background: #e2e8f0;
+      padding: 3px;
+      border-radius: 10px;
+      gap: 2px;
+    }
+
+    .difficulty-tabs button {
+      border: none;
+      background: transparent;
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .difficulty-tabs button.active {
+      background: var(--surface);
+      color: var(--primary);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    /* 상태 바 */
+    .status-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--surface);
+      padding: 10px 16px;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+
+    .status-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--text-muted);
+    }
+
+    .status-item span {
+      color: var(--text);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .mistakes.danger span {
+      color: var(--error-text);
+    }
+
+    /* 수도쿠 보드 */
+    .board-wrapper {
+      background: var(--surface);
+      padding: 8px;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+
+    .board {
+      display: grid;
+      grid-template-columns: repeat(9, 1fr);
+      aspect-ratio: 1 / 1;
+      border: 2.5px solid var(--border-thick);
+      border-radius: 6px;
+      overflow: hidden;
+      background: var(--surface);
+    }
+
+    .cell {
+      position: relative;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      border-right: 1px solid var(--border-thin);
+      border-bottom: 1px solid var(--border-thin);
+      font-size: clamp(1.2rem, 5.2vw, 1.65rem);
+      font-weight: 600;
+      cursor: pointer;
+      transition: background-color 0.08s ease;
+    }
+
+    /* 3x3 굵은 구분선 */
+    .cell:nth-child(3n) {
+      border-right: 2px solid var(--border-thick);
+    }
+    .cell:nth-child(9n) {
+      border-right: none;
+    }
+    .cell:nth-child(n + 19):nth-child(-n + 27),
+    .cell:nth-child(n + 46):nth-child(-n + 54) {
+      border-bottom: 2px solid var(--border-thick);
+    }
+    .cell:nth-child(n + 73) {
+      border-bottom: none;
+    }
+
+    /* 셀 상태별 스타일 */
+    .cell.fixed {
+      color: var(--fixed-num);
+      font-weight: 700;
+    }
+
+    .cell.user {
+      color: var(--user-num);
+    }
+
+    .cell.peer {
+      background-color: var(--highlight-peer);
+    }
+
+    .cell.same-num {
+      background-color: var(--highlight-same);
+    }
+
+    .cell.selected {
+      background-color: var(--primary-light) !important;
+      outline: 2px solid var(--primary);
+      outline-offset: -2px;
+      z-index: 2;
+    }
+
+    .cell.error {
+      background-color: var(--error-bg) !important;
+      color: var(--error-text) !important;
+    }
+
+    /* 메모 그리드 */
+    .notes-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      grid-template-rows: repeat(3, 1fr);
+      width: 100%;
+      height: 100%;
+      padding: 2px;
+    }
+
+    .note-num {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: clamp(0.55rem, 2.1vw, 0.72rem);
+      font-weight: 600;
+      color: var(--note-text);
+      line-height: 1;
+    }
+
+    .note-num.highlight {
+      color: var(--primary);
+      font-weight: 800;
+    }
+
+    /* 컨트롤 버튼 (실행취소, 지우기, 메모, 힌트) */
+    .controls {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+    }
+
+    .ctrl-btn {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      padding: 10px 6px;
+      background: var(--surface);
+      border: 1px solid #e2e8f0;
+      border-radius: var(--radius);
+      box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04);
+      color: var(--text);
+      font-size: 0.78rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.12s ease;
+    }
+
+    .ctrl-btn:active {
+      transform: scale(0.96);
+    }
+
+    .ctrl-btn.active {
+      background: var(--primary);
+      color: #ffffff;
+      border-color: var(--primary);
+    }
+
+    .ctrl-btn svg {
+      width: 20px;
+      height: 20px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .badge {
+      position: absolute;
+      top: 5px;
+      right: 7px;
+      font-size: 0.65rem;
+      font-weight: 700;
+      padding: 1px 5px;
+      border-radius: 99px;
+      background: #e2e8f0;
+      color: var(--text);
+    }
+
+    .ctrl-btn.active .badge {
+      background: #ffffff;
+      color: var(--primary);
+    }
+
+    /* 숫자 패드 */
+    .numpad {
+      display: grid;
+      grid-template-columns: repeat(9, 1fr);
+      gap: 6px;
+    }
+
+    .num-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 10px 0;
+      background: var(--surface);
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      box-shadow: 0 2px 6px rgba(15, 23, 42, 0.05);
+      cursor: pointer;
+      transition: all 0.1s ease;
+    }
+
+    .num-btn:active {
+      transform: scale(0.94);
+      background: var(--primary-soft);
+    }
+
+    .num-btn .digit {
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: var(--primary);
+      line-height: 1.1;
+    }
+
+    .num-btn .remain {
+      font-size: 0.68rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .num-btn.completed {
+      opacity: 0.35;
+      pointer-events: none;
+    }
+
+    /* 새 게임 버튼 */
+    .new-game-btn {
+      width: 100%;
+      padding: 13px;
+      background: var(--fixed-num);
+      color: #ffffff;
+      border: none;
+      border-radius: var(--radius);
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+
+    .new-game-btn:hover {
+      opacity: 0.92;
+    }
+
+    /* 모달 */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.55);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+      z-index: 50;
+      backdrop-filter: blur(2px);
+    }
+
+    .modal-backdrop.show {
+      display: flex;
+    }
+
+    .modal {
+      background: var(--surface);
+      width: 100%;
+      max-width: 340px;
+      padding: 24px;
+      border-radius: 16px;
+      text-align: center;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+    }
+
+    .modal h2 {
+      margin: 0 0 8px;
+      font-size: 1.35rem;
+    }
+
+    .modal p {
+      margin: 0 0 20px;
+      color: var(--text-muted);
+      font-size: 0.92rem;
+      line-height: 1.5;
+    }
+
+    .modal-stats {
+      display: flex;
+      justify-content: space-around;
+      background: var(--bg);
+      padding: 12px;
+      border-radius: 10px;
+      margin-bottom: 20px;
+    }
+
+    .modal-stats div {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-size: 0.78rem;
+      color: var(--text-muted);
+    }
+
+    .modal-stats strong {
+      font-size: 1.05rem;
+      color: var(--text);
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <h1>SUDOKU</h1>
+      <div class="difficulty-tabs" id="difficultyTabs">
+        <button data-diff="easy" class="active">쉬움</button>
+        <button data-diff="medium">보통</button>
+        <button data-diff="hard">어려움</button>
+      </div>
+    </header>
+
+    <div class="status-bar">
+      <div class="status-item mistakes" id="mistakeBox">
+        실수 <span id="mistakeCount">0 / 3</span>
+      </div>
+      <div class="status-item">
+        최고 <span id="bestTime">--:--</span>
+      </div>
+      <div class="status-item">
+        시간 <span id="timer">00:00</span>
+      </div>
+    </div>
+
+    <div class="board-wrapper">
+      <div class="board" id="board"></div>
+    </div>
+
+    <div class="controls">
+      <button class="ctrl-btn" id="undoBtn" title="실행 취소 (Ctrl+Z)">
+        <svg viewBox="0 0 24 24"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg>
+        실행취소
+      </button>
+      <button class="ctrl-btn" id="eraseBtn" title="지우기 (Backspace)">
+        <svg viewBox="0 0 24 24"><path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21"/><path d="M22 21H7"/><path d="m5 11 9 9"/></svg>
+        지우기
+      </button>
+      <button class="ctrl-btn" id="noteBtn" title="메모 모드 (N)">
+        <span class="badge" id="noteBadge">OFF</span>
+        <svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+        메모
+      </button>
+      <button class="ctrl-btn" id="hintBtn" title="힌트 사용">
+        <span class="badge" id="hintBadge">3</span>
+        <svg viewBox="0 0 24 24"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/></svg>
+        힌트
+      </button>
+    </div>
+
+    <div class="numpad" id="numpad"></div>
+
+    <button class="new-game-btn" id="newGameBtn">새 게임 시작</button>
+  </div>
+
+  <!-- 결과 모달 -->
+  <div class="modal-backdrop" id="modalBackdrop">
+    <div class="modal">
+      <h2 id="modalTitle">퍼즐 완료!</h2>
+      <p id="modalDesc">모든 칸을 정확하게 채웠습니다.</p>
+      <div class="modal-stats">
+        <div>난이도<strong id="modalDiff">쉬움</strong></div>
+        <div>소요 시간<strong id="modalTime">00:00</strong></div>
+        <div>최고 기록<strong id="modalBest">00:00</strong></div>
+      </div>
+      <button class="new-game-btn" id="modalNewBtn">새 게임 하기</button>
+    </div>
+  </div>
+
+  <script>
+    (() => {
+      const STORAGE_KEY = 'sudoku_studio_state_v1';
+      const BEST_KEY = 'sudoku_studio_best_v1';
+      const DIFF_CONFIG = {
+        easy: { label: '쉬움', holes: 36 },
+        medium: { label: '보통', holes: 45 },
+        hard: { label: '어려움', holes: 53 }
+      };
+
+      // 게임 상태
+      let state = {
+        difficulty: 'easy',
+        solution: [],
+        puzzle: [],
+        board: [],
+        notes: [], // 81개 각 원소는 숫자 배열
+        selected: 0,
+        noteMode: false,
+        mistakes: 0,
+        maxMistakes: 3,
+        hints: 3,
+        seconds: 0,
+        history: [],
+        gameOver: false,
+        won: false
+      };
+
+      let bestTimes = JSON.parse(localStorage.getItem(BEST_KEY) || '{}');
+      let timerInterval = null;
+
+      // DOM 참조
+      const boardEl = document.getElementById('board');
+      const numpadEl = document.getElementById('numpad');
+      const timerEl = document.getElementById('timer');
+      const bestTimeEl = document.getElementById('bestTime');
+      const mistakeCountEl = document.getElementById('mistakeCount');
+      const mistakeBoxEl = document.getElementById('mistakeBox');
+      const noteBtn = document.getElementById('noteBtn');
+      const noteBadge = document.getElementById('noteBadge');
+      const hintBadge = document.getElementById('hintBadge');
+      const modalBackdrop = document.getElementById('modalBackdrop');
+
+      // --- 수도쿠 생성 및 풀이 엔진 ---
+      function shuffle(arr) {
+        const a = arr.slice();
+        for (let i = a.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [a[i], a[j]] = [a[j], a[i]];
+        }
+        return a;
+      }
+
+      function isValid(grid, idx, num) {
+        const r = Math.floor(idx / 9);
+        const c = idx % 9;
+        const br = Math.floor(r / 3) * 3;
+        const bc = Math.floor(c / 3) * 3;
+
+        for (let i = 0; i < 9; i++) {
+          if (grid[r * 9 + i] === num) return false;
+          if (grid[i * 9 + c] === num) return false;
+          const boxIdx = (br + Math.floor(i / 3)) * 9 + (bc + (i % 3));
+          if (grid[boxIdx] === num) return false;
+        }
+        return true;
+      }
+
+      function fillGrid(grid) {
+        const emptyIdx = grid.indexOf(0);
+        if (emptyIdx === -1) return true;
+
+        for (const num of shuffle([1, 2, 3, 4, 5, 6, 7, 8, 9])) {
+          if (isValid(grid, emptyIdx, num)) {
+            grid[emptyIdx] = num;
+            if (fillGrid(grid)) return true;
+            grid[emptyIdx] = 0;
+          }
+        }
+        return false;
+      }
+
+      // 해의 개수를 최대 2개까지 세어 유일해 검증
+      function countSolutions(grid, limit = 2) {
+        let minCandidates = 10;
+        let targetIdx = -1;
+
+        for (let i = 0; i < 81; i++) {
+          if (grid[i] === 0) {
+            let count = 0;
+            for (let n = 1; n <= 9; n++) {
+              if (isValid(grid, i, n)) count++;
+            }
+            if (count === 0) return 0;
+            if (count < minCandidates) {
+              minCandidates = count;
+              targetIdx = i;
+            }
+          }
+        }
+
+        if (targetIdx === -1) return 1;
+
+        let total = 0;
+        for (let n = 1; n <= 9; n++) {
+          if (isValid(grid, targetIdx, n)) {
+            grid[targetIdx] = n;
+            total += countSolutions(grid, limit);
+            grid[targetIdx] = 0;
+            if (total >= limit) return total;
+          }
+        }
+        return total;
+      }
+
+      function generatePuzzle(difficulty) {
+        const solution = Array(81).fill(0);
+        fillGrid(solution);
+
+        const puzzle = solution.slice();
+        const targetHoles = DIFF_CONFIG[difficulty].holes;
+        const indices = shuffle([...Array(81).keys()]);
+        let removed = 0;
+
+        for (const idx of indices) {
+          if (removed >= targetHoles) break;
+          const backup = puzzle[idx];
+          puzzle[idx] = 0;
+
+          if (countSolutions(puzzle.slice(), 2) !== 1) {
+            puzzle[idx] = backup;
+          } else {
+            removed++;
+          }
+        }
+
+        return { solution, puzzle };
+      }
+
+      // --- UI 초기화 및 렌더링 ---
+      function initDOM() {
+        boardEl.innerHTML = '';
+        for (let i = 0; i < 81; i++) {
+          const cell = document.createElement('div');
+          cell.className = 'cell';
+          cell.dataset.idx = i;
+          cell.addEventListener('click', () => selectCell(i));
+          boardEl.appendChild(cell);
+        }
+
+        numpadEl.innerHTML = '';
+        for (let n = 1; n <= 9; n++) {
+          const btn = document.createElement('button');
+          btn.className = 'num-btn';
+          btn.dataset.num = n;
+          btn.innerHTML = `<span class="digit">${n}</span><span class="remain" id="remain-${n}">9</span>`;
+          btn.addEventListener('click', () => inputNumber(n));
+          numpadEl.appendChild(btn);
+        }
+      }
+
+      function formatTime(sec) {
+        if (sec == null || isNaN(sec)) return '--:--';
+        const m = String(Math.floor(sec / 60)).padStart(2, '0');
+        const s = String(sec % 60).padStart(2, '0');
+        return `${m}:${s}`;
+      }
+
+      function startTimer() {
+        stopTimer();
+        timerInterval = setInterval(() => {
+          if (!state.gameOver && !document.hidden) {
+            state.seconds++;
+            timerEl.textContent = formatTime(state.seconds);
+            if (state.seconds % 5 === 0) saveState();
+          }
+        }, 1000);
+      }
+
+      function stopTimer() {
+        if (timerInterval) {
+          clearInterval(timerInterval);
+          timerInterval = null;
+        }
+      }
+
+      function startNewGame(diff = state.difficulty) {
+        modalBackdrop.classList.remove('show');
+        const { solution, puzzle } = generatePuzzle(diff);
+
+        state = {
+          difficulty: diff,
+          solution,
+          puzzle,
+          board: puzzle.slice(),
+          notes: Array.from({ length: 81 }, () => []),
+          selected: puzzle.indexOf(0) !== -1 ? puzzle.indexOf(0) : 0,
+          noteMode: false,
+          mistakes: 0,
+          maxMistakes: 3,
+          hints: 3,
+          seconds: 0,
+          history: [],
+          gameOver: false,
+          won: false
+        };
+
+        saveState();
+        renderAll();
+        startTimer();
+      }
+
+      function renderAll() {
+        // 난이도 탭
+        document.querySelectorAll('#difficultyTabs button').forEach(btn => {
+          btn.classList.toggle('active', btn.dataset.diff === state.difficulty);
+        });
+
+        // 상태 바
+        mistakeCountEl.textContent = `${state.mistakes} / ${state.maxMistakes}`;
+        mistakeBoxEl.classList.toggle('danger', state.mistakes >= 2);
+        timerEl.textContent = formatTime(state.seconds);
+        bestTimeEl.textContent = formatTime(bestTimes[state.difficulty]);
+
+        // 메모/힌트 배지
+        noteBtn.classList.toggle('active', state.noteMode);
+        noteBadge.textContent = state.noteMode ? 'ON' : 'OFF';
+        hintBadge.textContent = state.hints;
+
+        // 선택된 셀 기준 좌표 및 값
+        const selRow = Math.floor(state.selected / 9);
+        const selCol = state.selected % 9;
+        const selBoxR = Math.floor(selRow / 3);
+        const selBoxC = Math.floor(selCol / 3);
+        const selVal = state.board[state.selected];
+
+        const cells = boardEl.children;
+        const counts = Array(10).fill(0);
+
+        for (let i = 0; i < 81; i++) {
+          const cell = cells[i];
+          const val = state.board[i];
+          const isFixed = state.puzzle[i] !== 0;
+          const r = Math.floor(i / 9);
+          const c = i % 9;
+          const isPeer =
+            r === selRow ||
+            c === selCol ||
+            (Math.floor(r / 3) === selBoxR && Math.floor(c / 3) === selBoxC);
+
+          cell.className = 'cell';
+          if (isFixed) cell.classList.add('fixed');
+          else if (val !== 0) cell.classList.add('user');
+
+          if (i === state.selected) {
+            cell.classList.add('selected');
+          } else if (selVal !== 0 && val === selVal) {
+            cell.classList.add('same-num');
+          } else if (isPeer) {
+            cell.classList.add('peer');
+          }
+
+          if (val !== 0 && !isFixed && val !== state.solution[i]) {
+            cell.classList.add('error');
+          }
+
+          if (val !== 0) {
+            if (val === state.solution[i]) counts[val]++;
+            cell.textContent = val;
+          } else if (state.notes[i].length > 0) {
+            let html = '<div class="notes-grid">';
+            for (let n = 1; n <= 9; n++) {
+              const has = state.notes[i].includes(n);
+              const hl = has && selVal === n ? ' highlight' : '';
+              html += `<span class="note-num${hl}">${has ? n : ''}</span>`;
+            }
+            html += '</div>';
+            cell.innerHTML = html;
+          } else {
+            cell.textContent = '';
+          }
+        }
+
+        // 숫자 패드 남은 개수 업데이트
+        for (let n = 1; n <= 9; n++) {
+          const remain = Math.max(0, 9 - counts[n]);
+          const btn = numpadEl.children[n - 1];
+          document.getElementById(`remain-${n}`).textContent = remain;
+          btn.classList.toggle('completed', remain === 0);
+        }
+      }
+
+      // --- 사용자 액션 ---
+      function selectCell(idx) {
+        state.selected = idx;
+        renderAll();
+      }
+
+      function pushHistory() {
+        state.history.push({
+          board: state.board.slice(),
+          notes: state.notes.map(arr => arr.slice())
+        });
+        if (state.history.length > 50) state.history.shift();
+      }
+
+      function clearPeerNotes(idx, num) {
+        const r = Math.floor(idx / 9);
+        const c = idx % 9;
+        const br = Math.floor(r / 3) * 3;
+        const bc = Math.floor(c / 3) * 3;
+
+        for (let i = 0; i < 9; i++) {
+          const targets = [
+            r * 9 + i,
+            i * 9 + c,
+            (br + Math.floor(i / 3)) * 9 + (bc + (i % 3))
+          ];
+          for (const t of targets) {
+            state.notes[t] = state.notes[t].filter(n => n !== num);
+          }
+        }
+      }
+
+      function inputNumber(num) {
+        if (state.gameOver) return;
+        const idx = state.selected;
+        if (state.puzzle[idx] !== 0) return; // 초기 고정 숫자 보호
+
+        pushHistory();
+
+        if (state.noteMode) {
+          if (state.board[idx] !== 0) state.board[idx] = 0;
+          const list = state.notes[idx];
+          if (list.includes(num)) {
+            state.notes[idx] = list.filter(n => n !== num);
+          } else {
+            state.notes[idx] = [...list, num].sort((a, b) => a - b);
+          }
+          saveState();
+          renderAll();
+          return;
+        }
+
+        // 일반 숫자 입력
+        state.notes[idx] = [];
+        state.board[idx] = num;
+
+        if (num !== state.solution[idx]) {
+          state.mistakes++;
+          if (state.mistakes >= state.maxMistakes) {
+            endGame(false);
+            return;
+          }
+        } else {
+          clearPeerNotes(idx, num);
+          if (checkWin()) {
+            endGame(true);
+            return;
+          }
+        }
+
+        saveState();
+        renderAll();
+      }
+
+      function eraseCell() {
+        if (state.gameOver) return;
+        const idx = state.selected;
+        if (state.puzzle[idx] !== 0) return;
+        if (state.board[idx] === 0 && state.notes[idx].length === 0) return;
+
+        pushHistory();
+        state.board[idx] = 0;
+        state.notes[idx] = [];
+        saveState();
+        renderAll();
+      }
+
+      function undo() {
+        if (state.gameOver || state.history.length === 0) return;
+        const prev = state.history.pop();
+        state.board = prev.board;
+        state.notes = prev.notes;
+        saveState();
+        renderAll();
+      }
+
+      function useHint() {
+        if (state.gameOver || state.hints <= 0) return;
+        let idx = state.selected;
+
+        // 선택된 칸이 이미 정답이면 빈칸/오답 칸 자동 탐색
+        if (state.board[idx] === state.solution[idx]) {
+          idx = state.board.findIndex((v, i) => v !== state.solution[i]);
+          if (idx === -1) return;
+          state.selected = idx;
+        }
+
+        pushHistory();
+        state.hints--;
+        const answer = state.solution[idx];
+        state.board[idx] = answer;
+        state.notes[idx] = [];
+        clearPeerNotes(idx, answer);
+
+        if (checkWin()) {
+          endGame(true);
+          return;
+        }
+
+        saveState();
+        renderAll();
+      }
+
+      function checkWin() {
+        for (let i = 0; i < 81; i++) {
+          if (state.board[i] !== state.solution[i]) return false;
+        }
+        return true;
+      }
+
+      function endGame(won) {
+        state.gameOver = true;
+        state.won = won;
+        stopTimer();
+
+        if (won) {
+          const prevBest = bestTimes[state.difficulty];
+          if (prevBest == null || state.seconds < prevBest) {
+            bestTimes[state.difficulty] = state.seconds;
+            localStorage.setItem(BEST_KEY, JSON.stringify(bestTimes));
+          }
+        }
+
+        saveState();
+        renderAll();
+
+        document.getElementById('modalTitle').textContent = won ? '퍼즐 완료!' : '게임 오버';
+        document.getElementById('modalDesc').textContent = won
+          ? '훌륭합니다! 모든 숫자를 정확히 완성했습니다.'
+          : '실수 3회를 초과했습니다. 새 게임으로 다시 도전해 보세요.';
+        document.getElementById('modalDiff').textContent = DIFF_CONFIG[state.difficulty].label;
+        document.getElementById('modalTime').textContent = formatTime(state.seconds);
+        document.getElementById('modalBest').textContent = formatTime(bestTimes[state.difficulty]);
+        modalBackdrop.classList.add('show');
+      }
+
+      // --- 로컬 스토리지 저장/복원 ---
+      function saveState() {
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        } catch (e) {}
+      }
+
+      function loadState() {
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          if (!raw) return false;
+          const saved = JSON.parse(raw);
+          if (saved && Array.isArray(saved.board) && saved.board.length === 81) {
+            state = saved;
+            return true;
+          }
+        } catch (e) {}
+        return false;
+      }
+
+      // --- 이벤트 바인딩 ---
+      document.getElementById('difficultyTabs').addEventListener('click', e => {
+        if (e.target.tagName !== 'BUTTON') return;
+        startNewGame(e.target.dataset.diff);
+      });
+
+      document.getElementById('undoBtn').addEventListener('click', undo);
+      document.getElementById('eraseBtn').addEventListener('click', eraseCell);
+      document.getElementById('noteBtn').addEventListener('click', () => {
+        state.noteMode = !state.noteMode;
+        saveState();
+        renderAll();
+      });
+      document.getElementById('hintBtn').addEventListener('click', useHint);
+      document.getElementById('newGameBtn').addEventListener('click', () => startNewGame(state.difficulty));
+      document.getElementById('modalNewBtn').addEventListener('click', () => startNewGame(state.difficulty));
+
+      // 키보드 단축키 지원
+      document.addEventListener('keydown', e => {
+        if (state.gameOver) return;
+        const r = Math.floor(state.selected / 9);
+        const c = state.selected % 9;
+
+        if (e.key >= '1' && e.key <= '9') {
+          inputNumber(Number(e.key));
+        } else if (e.key === 'Backspace' || e.key === 'Delete' || e.key === '0') {
+          eraseCell();
+        } else if (e.key === 'n' || e.key === 'N') {
+          state.noteMode = !state.noteMode;
+          renderAll();
+        } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+          e.preventDefault();
+          undo();
+        } else if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          selectCell(((r + 8) % 9) * 9 + c);
+        } else if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          selectCell(((r + 1) % 9) * 9 + c);
+        } else if (e.key === 'ArrowLeft') {
+          e.preventDefault();
+          selectCell(r * 9 + ((c + 8) % 9));
+        } else if (e.key === 'ArrowRight') {
+          e.preventDefault();
+          selectCell(r * 9 + ((c + 1) % 9));
+        }
+      });
+
+      // 앱 시작
+      initDOM();
+      if (loadState() && !state.gameOver) {
+        renderAll();
+        startTimer();
+      } else {
+        startNewGame('easy');
+      }
+    })();
+  </script>
+</body>
+</html>
