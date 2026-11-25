@@ -2,8 +2,19 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>Sudoku Studio</title>
+
+  <!-- 웹앱 아이콘 및 파비콘 설정 -->
+  <link rel="icon" type="image/png" href="./icon.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="./icon.png" />
+
+  <!-- iOS 홈 화면 실행 시 주소창 숨김 및 상태바 설정 -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Sudoku" />
+  <meta name="theme-color" content="#f4f6f9" />
+
   <style>
     :root {
       --bg: #f4f6f9;
@@ -34,7 +45,7 @@
 
     body {
       margin: 0;
-      padding: 16px;
+      padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom));
       font-family: -apple-system, BlinkMacSystemFont, "Pretendard", "Segoe UI", Roboto, sans-serif;
       background: var(--bg);
       color: var(--text);
@@ -52,7 +63,6 @@
       gap: 14px;
     }
 
-    /* 헤더 & 난이도 선택 */
     header {
       display: flex;
       justify-content: space-between;
@@ -93,7 +103,6 @@
       box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
     }
 
-    /* 상태 바 */
     .status-bar {
       display: flex;
       justify-content: space-between;
@@ -122,7 +131,6 @@
       color: var(--error-text);
     }
 
-    /* 수도쿠 보드 */
     .board-wrapper {
       background: var(--surface);
       padding: 8px;
@@ -153,7 +161,6 @@
       transition: background-color 0.08s ease;
     }
 
-    /* 3x3 굵은 구분선 */
     .cell:nth-child(3n) {
       border-right: 2px solid var(--border-thick);
     }
@@ -168,7 +175,6 @@
       border-bottom: none;
     }
 
-    /* 셀 상태별 스타일 */
     .cell.fixed {
       color: var(--fixed-num);
       font-weight: 700;
@@ -198,7 +204,6 @@
       color: var(--error-text) !important;
     }
 
-    /* 메모 그리드 */
     .notes-grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
@@ -223,7 +228,6 @@
       font-weight: 800;
     }
 
-    /* 컨트롤 버튼 (실행취소, 지우기, 메모, 힌트) */
     .controls {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
@@ -286,7 +290,6 @@
       color: var(--primary);
     }
 
-    /* 숫자 패드 */
     .numpad {
       display: grid;
       grid-template-columns: repeat(9, 1fr);
@@ -331,7 +334,6 @@
       pointer-events: none;
     }
 
-    /* 새 게임 버튼 */
     .new-game-btn {
       width: 100%;
       padding: 13px;
@@ -349,7 +351,6 @@
       opacity: 0.92;
     }
 
-    /* 모달 */
     .modal-backdrop {
       position: fixed;
       inset: 0;
@@ -464,7 +465,6 @@
     <button class="new-game-btn" id="newGameBtn">새 게임 시작</button>
   </div>
 
-  <!-- 결과 모달 -->
   <div class="modal-backdrop" id="modalBackdrop">
     <div class="modal">
       <h2 id="modalTitle">퍼즐 완료!</h2>
@@ -488,13 +488,12 @@
         hard: { label: '어려움', holes: 53 }
       };
 
-      // 게임 상태
       let state = {
         difficulty: 'easy',
         solution: [],
         puzzle: [],
         board: [],
-        notes: [], // 81개 각 원소는 숫자 배열
+        notes: [],
         selected: 0,
         noteMode: false,
         mistakes: 0,
@@ -509,7 +508,6 @@
       let bestTimes = JSON.parse(localStorage.getItem(BEST_KEY) || '{}');
       let timerInterval = null;
 
-      // DOM 참조
       const boardEl = document.getElementById('board');
       const numpadEl = document.getElementById('numpad');
       const timerEl = document.getElementById('timer');
@@ -521,7 +519,6 @@
       const hintBadge = document.getElementById('hintBadge');
       const modalBackdrop = document.getElementById('modalBackdrop');
 
-      // --- 수도쿠 생성 및 풀이 엔진 ---
       function shuffle(arr) {
         const a = arr.slice();
         for (let i = a.length - 1; i > 0; i--) {
@@ -560,7 +557,6 @@
         return false;
       }
 
-      // 해의 개수를 최대 2개까지 세어 유일해 검증
       function countSolutions(grid, limit = 2) {
         let minCandidates = 10;
         let targetIdx = -1;
@@ -617,7 +613,6 @@
         return { solution, puzzle };
       }
 
-      // --- UI 초기화 및 렌더링 ---
       function initDOM() {
         boardEl.innerHTML = '';
         for (let i = 0; i < 81; i++) {
@@ -691,23 +686,19 @@
       }
 
       function renderAll() {
-        // 난이도 탭
         document.querySelectorAll('#difficultyTabs button').forEach(btn => {
           btn.classList.toggle('active', btn.dataset.diff === state.difficulty);
         });
 
-        // 상태 바
         mistakeCountEl.textContent = `${state.mistakes} / ${state.maxMistakes}`;
         mistakeBoxEl.classList.toggle('danger', state.mistakes >= 2);
         timerEl.textContent = formatTime(state.seconds);
         bestTimeEl.textContent = formatTime(bestTimes[state.difficulty]);
 
-        // 메모/힌트 배지
         noteBtn.classList.toggle('active', state.noteMode);
         noteBadge.textContent = state.noteMode ? 'ON' : 'OFF';
         hintBadge.textContent = state.hints;
 
-        // 선택된 셀 기준 좌표 및 값
         const selRow = Math.floor(state.selected / 9);
         const selCol = state.selected % 9;
         const selBoxR = Math.floor(selRow / 3);
@@ -761,7 +752,6 @@
           }
         }
 
-        // 숫자 패드 남은 개수 업데이트
         for (let n = 1; n <= 9; n++) {
           const remain = Math.max(0, 9 - counts[n]);
           const btn = numpadEl.children[n - 1];
@@ -770,7 +760,6 @@
         }
       }
 
-      // --- 사용자 액션 ---
       function selectCell(idx) {
         state.selected = idx;
         renderAll();
@@ -805,7 +794,7 @@
       function inputNumber(num) {
         if (state.gameOver) return;
         const idx = state.selected;
-        if (state.puzzle[idx] !== 0) return; // 초기 고정 숫자 보호
+        if (state.puzzle[idx] !== 0) return;
 
         pushHistory();
 
@@ -822,7 +811,6 @@
           return;
         }
 
-        // 일반 숫자 입력
         state.notes[idx] = [];
         state.board[idx] = num;
 
@@ -870,7 +858,6 @@
         if (state.gameOver || state.hints <= 0) return;
         let idx = state.selected;
 
-        // 선택된 칸이 이미 정답이면 빈칸/오답 칸 자동 탐색
         if (state.board[idx] === state.solution[idx]) {
           idx = state.board.findIndex((v, i) => v !== state.solution[i]);
           if (idx === -1) return;
@@ -926,7 +913,6 @@
         modalBackdrop.classList.add('show');
       }
 
-      // --- 로컬 스토리지 저장/복원 ---
       function saveState() {
         try {
           localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
@@ -946,7 +932,6 @@
         return false;
       }
 
-      // --- 이벤트 바인딩 ---
       document.getElementById('difficultyTabs').addEventListener('click', e => {
         if (e.target.tagName !== 'BUTTON') return;
         startNewGame(e.target.dataset.diff);
@@ -963,7 +948,6 @@
       document.getElementById('newGameBtn').addEventListener('click', () => startNewGame(state.difficulty));
       document.getElementById('modalNewBtn').addEventListener('click', () => startNewGame(state.difficulty));
 
-      // 키보드 단축키 지원
       document.addEventListener('keydown', e => {
         if (state.gameOver) return;
         const r = Math.floor(state.selected / 9);
@@ -994,7 +978,6 @@
         }
       });
 
-      // 앱 시작
       initDOM();
       if (loadState() && !state.gameOver) {
         renderAll();
